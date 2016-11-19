@@ -12,18 +12,13 @@ void handle_signal(int);
 int parse(char *, char **, char **, int *);
 void chop(char *);
 
-#define STRING_SIZE 80
+#define STRING_SIZE 256
 
 #define ERR(string, ...) fprintf (stderr, string, ## __VA_ARGS__)
 #define NORMAL 				0
 #define OUTPUT_REDIRECTION 	1
 #define INPUT_REDIRECTION 	2
 #define PIPELINE 			3
-
-
-typedef void (*sighandler_t)(int);
-
-
 
 int main() {
     printf("=======================================\n Hello, this is simple shell  emulator!\n=======================================\n");
@@ -32,10 +27,19 @@ int main() {
 	size_t len = STRING_SIZE;
 	char  *inputString, *program[STRING_SIZE], *supplement = NULL;
 	inputString = (char*)malloc(sizeof(char)*STRING_SIZE);
-	mode = NORMAL;
-	getline( &inputString, &len, stdin);
-	cmdArgc = parse(inputString, program, &supplement, &mode);
-	execute(program, mode, &supplement);
+    while (1) {
+        mode = NORMAL;
+	    getline (&inputString, &len, stdin);
+        while (strcmp(inputString, "\n") == 0) {
+	        getline (&inputString, &len, stdin);
+        }
+        if (strcmp(inputString, "exit\n") == 0) {
+            free(inputString);
+            exit(0);
+        }
+	    cmdArgc = parse(inputString, program, &supplement, &mode);
+	    execute(program, mode, &supplement);
+    }
     free(inputString);
 	return 0;
 }
@@ -44,16 +48,11 @@ int parse(char *inputString, char *program[], char **buff, int *modePtr)
 {
 	int cmdArgc = 0, terminate = 0;
 	char *srcPtr = inputString;
-	//printf("parse fun%sends", inputString);
-	while(*srcPtr != '\0' && terminate == 0)
-	{
+	while(*srcPtr != '\0' && terminate == 0) {
 		*program = srcPtr;
 		cmdArgc++;
-		//printf("parse fun2%sends", *program);
-		while(*srcPtr != ' ' && *srcPtr != '\t' && *srcPtr != '\0' && *srcPtr != '\n' && terminate == 0)
-		{
-			switch(*srcPtr)
-			{
+		while(*srcPtr != ' ' && *srcPtr != '\t' && *srcPtr != '\0' && *srcPtr != '\n' && terminate == 0) {
+			switch(*srcPtr) {
 				case '>':
 					*modePtr = OUTPUT_REDIRECTION;
 					*program = NULL;
@@ -86,24 +85,19 @@ int parse(char *inputString, char *program[], char **buff, int *modePtr)
 			}
 			srcPtr++;
 		}
-		while((*srcPtr == ' ' || *srcPtr == '\t' || *srcPtr == '\n') && terminate == 0)
-		{
+		while((*srcPtr == ' ' || *srcPtr == '\t' || *srcPtr == '\n') && terminate == 0) {
 			*srcPtr = '\0';
 			srcPtr++;
 		}
 		program++;
 	}
-	/*srcPtr++;
-	*srcPtr = '\0';
-	destPtr--;*/
 	*program = NULL;
 	return cmdArgc;
 }
 
 void chop(char *srcPtr)
 {
-	while(*srcPtr != ' ' && *srcPtr != '\t' && *srcPtr != '\n')
-	{
+	while(*srcPtr != ' ' && *srcPtr != '\t' && *srcPtr != '\n') {
 		srcPtr++;
 	}
 	*srcPtr = '\0';
@@ -111,29 +105,26 @@ void chop(char *srcPtr)
 
 void execute(char **program, int mode, char **buff)
 {
-	int fd, fd0 = STDIN_FILENO, fd1 = STDOUT_FILENO, fd2 = STDERR_FILENO;
-    pid_t pid, pid2;
-    int counter, cc;
+	int fd = 0, fd0 = STDIN_FILENO, fd1 = STDOUT_FILENO;
+    pid_t pid = 0, pid2 = 0;
+    int counter = 0, cc = 0;
     int fdc[2];
 	int mode2 = NORMAL, status1;
 	char *program2[STRING_SIZE], *supplement2 = NULL;
-    char www[100];
 	int myPipe[2];
-	if(mode == PIPELINE)
-	{
-		if(pipe(myPipe))					//create pipe
-		{
-			ERR("Error while making pipe", errno);
+	if(mode == PIPELINE) {
+		if(pipe(myPipe)) {
+			ERR("Error while making pipe:%s", strerror(errno));
 			exit(-1);
 		}
 		parse(*buff, program2, &supplement2, &mode2);
     }
 	pid = fork();
-	if( pid < 0)	{
-		ERR("Error while forking", errno);
+	if (pid < 0) {
+		ERR("Error while forking:%s", strerror(errno));
 		exit(-1);
 	}
-	else if(pid == 0) {
+	else if (pid == 0) {
 		switch(mode)
 		{
 			case OUTPUT_REDIRECTION:
@@ -169,7 +160,7 @@ void execute(char **program, int mode, char **buff)
 			waitpid(pid, &status1, 0);		//wait for process 1 to finish
 			pid2 = fork();
 			if (pid2 < 0) {
-				ERR("Error while forking", errno);
+				ERR("Error while forking:%s", strerror(errno));
 				exit(-1); //close files
 			}
 			else if (pid2 == 0) {
@@ -181,8 +172,10 @@ void execute(char **program, int mode, char **buff)
                     dup2(fdc[1], 1);
                     close(fdc[0]);
                     close(fdc[1]);
-                    fprintf(stderr, "Now executing!\n");
-				    execvp(*program2, program2);
+				    if (execvp(*program2, program2) == -1) {
+                        ERR("Execvp error with %s: %s\n", *program2, strerror(errno));
+                        goto out;
+                    }
                 }  
                 close(fdc[1]);
                 dup2(fdc[0], 0);
@@ -192,17 +185,14 @@ void execute(char **program, int mode, char **buff)
                     printf("%s", buffc);
                     counter+=cc;
                 }
-                printf("me here\n");
+                printf("Bytes in output: %d\n", counter);
 			} else {
 				close(myPipe[0]);
 				close(myPipe[1]);
 			}
-
 		} else {
    			waitpid(pid2, &status1, 0);
         }
-
-            printf("The %d bytes are written to the out\n", counter);
     }
 out: 
     if (fd > 0) close(fd);
