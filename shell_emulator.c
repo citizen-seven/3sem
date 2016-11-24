@@ -30,9 +30,6 @@ int main() {
     while (1) {
         mode = NORMAL;
 	    getline (&inputString, &len, stdin);
-        while (strcmp(inputString, "\n") == 0) {
-	        getline (&inputString, &len, stdin);
-        }
         if (strcmp(inputString, "exit\n") == 0) {
             free(inputString);
             exit(0);
@@ -48,7 +45,7 @@ int parse(char *inputString, char *program[], char **buff, int *modePtr)
 {
 	int cmdArgc = 0, terminate = 0;
 	char *srcPtr = inputString;
-	while(*srcPtr != '\0' && terminate == 0) {
+	while(*srcPtr != '\0' && *srcPtr != ' ' && terminate == 0 && *srcPtr != '\n') {
 		*program = srcPtr;
 		cmdArgc++;
 		while(*srcPtr != ' ' && *srcPtr != '\t' && *srcPtr != '\0' && *srcPtr != '\n' && terminate == 0) {
@@ -112,13 +109,14 @@ void execute(char **program, int mode, char **buff)
 	int mode2 = NORMAL, status1;
 	char *program2[STRING_SIZE], *supplement2 = NULL;
 	int myPipe[2];
-	if(mode == PIPELINE) {
+	if (mode == PIPELINE) {
 		if(pipe(myPipe)) {
 			ERR("Error while making pipe:%s", strerror(errno));
 			exit(-1);
 		}
 		parse(*buff, program2, &supplement2, &mode2);
     }
+    //printf("programs %s, %s\n", program[0], program2[0]);
 	pid = fork();
 	if (pid < 0) {
 		ERR("Error while forking:%s", strerror(errno));
@@ -149,6 +147,12 @@ void execute(char **program, int mode, char **buff)
 				dup2(myPipe[1], fd1);
 				close(myPipe[1]);
 				break;
+            default: {
+                //printf("Normal mode\n");
+                execvp(*program, program);           
+                exit(-1);
+            }
+
 		}
 		if (execvp(*program, program) == -1) {
             ERR("Execvp error with %s: %s\n", *program, strerror(errno));
@@ -186,12 +190,14 @@ void execute(char **program, int mode, char **buff)
                     counter+=cc;
                 }
                 printf("Bytes in output: %d\n", counter);
+                exit(0);
 			} else {
 				close(myPipe[0]);
 				close(myPipe[1]);
+                waitpid(pid2, &status1, 0);
 			}
-		} else {
-   			waitpid(pid2, &status1, 0);
+		
+   		
         }
     }
 out: 
