@@ -1,1 +1,9 @@
+#object files
 *.o
+
+#GK files
+GK*
+
+*.docx
+
+*.png

@@ -8,11 +8,10 @@
 #include <fcntl.h>
 
 void execute(char **, int, char **);
-void handle_signal(int);
 int parse(char *, char **, char **, int *);
 void chop(char *);
 
-#define STRING_SIZE 256
+#define STRING_SIZE BUFSIZ
 
 #define ERR(string, ...) fprintf (stderr, string, ## __VA_ARGS__)
 #define NORMAL 				0
@@ -116,13 +115,14 @@ void execute(char **program, int mode, char **buff)
 		}
 		parse(*buff, program2, &supplement2, &mode2);
     }
-    //printf("programs %s, %s\n", program[0], program2[0]);
+   // printf("programs %s, %s\n", program[0], program2[0]);
 	pid = fork();
 	if (pid < 0) {
 		ERR("Error while forking:%s", strerror(errno));
 		exit(-1);
 	}
 	else if (pid == 0) {
+   //     printf("mode is %d\n", mode);
 		switch(mode)
 		{
 			case OUTPUT_REDIRECTION:
@@ -143,24 +143,26 @@ void execute(char **program, int mode, char **buff)
 				dup2(fd, fd0);
 				break;
 			case PIPELINE:
+       //         printf("pipe\n");
 				close(myPipe[0]);		//close input of pipe
 				dup2(myPipe[1], fd1);
 				close(myPipe[1]);
 				break;
             default: {
-                //printf("Normal mode\n");
+     //           printf("Normal mode\n");
                 execvp(*program, program);           
                 exit(-1);
             }
 
 		}
+       // fprintf(stderr, "first exec\n");
 		if (execvp(*program, program) == -1) {
             ERR("Execvp error with %s: %s\n", *program, strerror(errno));
             goto out;
         }
     }
     else {
-		if(mode == PIPELINE) {
+		if (mode == PIPELINE) {
 			waitpid(pid, &status1, 0);		//wait for process 1 to finish
 			pid2 = fork();
 			if (pid2 < 0) {
@@ -176,6 +178,7 @@ void execute(char **program, int mode, char **buff)
                     dup2(fdc[1], 1);
                     close(fdc[0]);
                     close(fdc[1]);
+                   // printf("executing\n");
 				    if (execvp(*program2, program2) == -1) {
                         ERR("Execvp error with %s: %s\n", *program2, strerror(errno));
                         goto out;
@@ -184,8 +187,9 @@ void execute(char **program, int mode, char **buff)
                 close(fdc[1]);
                 dup2(fdc[0], 0);
                 close(fdc[0]);
-                char buffc[300];
-                while ((cc = read(0, buffc, 300)) > 0) {
+               // printf("counting now\n");
+                char buffc[1024];
+                while ((cc = read(0, buffc, 1024)) > 0) {
                     printf("%s", buffc);
                     counter+=cc;
                 }
