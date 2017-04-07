@@ -7,3 +7,7 @@ GK*
 *.docx
 
 *.png
+
+*.txt[sorted]
+
+game/.game.c.swp
