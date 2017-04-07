@@ -10,9 +10,9 @@ Usage:
 
 * game: There are NC clerks, each of them has to scan ND documets. Print the sequence of their work, if the number of scanners and places on queues is limited.
 Usage: `./game NC ND TD NS TS L`
-  1. "NC - number of clerks"
-  2. "ND - number of documents for each"
-  3. "TD - time required for a document to be prepared for scanning"
-  4. "NS - number of scanners"
-  5. "TS - time required for a document to be scanned"
-  6. "L - amount of places on a queue"  
+  * "NC - number of clerks"
+  * "ND - number of documents for each"
+  * "TD - time required for a document to be prepared for scanning"
+  * "NS - number of scanners"
+  * "TS - time required for a document to be scanned"
+  * "L - amount of places on a queue"  
