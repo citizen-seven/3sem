@@ -1,4 +1,4 @@
-## Computer science tasks at MIPT, 4 semester
+## Computer science tasks at MIPT, 3 semester
 
 * USELESS: UNIX SYSTEM EXTREMELY LATE EXECUTION SOFTWARE SYSTEM - A program, which reads a string from a file in `<delay time> <a program to be executed> format and starts them with some delay, according to the plan of execution. The input file is being sorted. Program also handles processes termination.
 
